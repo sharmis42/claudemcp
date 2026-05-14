@@ -2,8 +2,8 @@ services:
   - type: web
     name: figma-mcp
     runtime: node
-    buildCommand: npm install && npm run build
-    startCommand: node --no-deprecation --max-old-space-size=400 dist/index.js
+    buildCommand: npm install
+    startCommand: node --no-deprecation --max-old-space-size=400 node_modules/.bin/tsx src/index.ts
     healthCheckPath: /health
     envVars:
       - key: FIGMA_ACCESS_TOKEN
