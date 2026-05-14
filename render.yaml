@@ -3,7 +3,7 @@ services:
     name: figma-mcp
     runtime: node
     buildCommand: npm install && npm run build
-    startCommand: node --no-deprecation dist/index.js
+    startCommand: node --no-deprecation --max-old-space-size=400 dist/index.js
     healthCheckPath: /health
     envVars:
       - key: FIGMA_ACCESS_TOKEN

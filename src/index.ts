@@ -269,15 +269,30 @@ function createServer(): McpServer {
 const app = createMcpExpressApp({ host: "0.0.0.0" });
 
 const transports: Record<string, StreamableHTTPServerTransport> = {};
+const sessionLastSeen: Record<string, number> = {};
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+// Evict sessions that have been idle for SESSION_TTL_MS
+setInterval(() => {
+  const now = Date.now();
+  for (const sid of Object.keys(transports)) {
+    if (now - (sessionLastSeen[sid] ?? 0) > SESSION_TTL_MS) {
+      transports[sid].close().catch(() => {});
+      delete transports[sid];
+      delete sessionLastSeen[sid];
+    }
+  }
+}, 5 * 60 * 1000).unref();
 
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", service: "figma-mcp" });
+  res.json({ status: "ok", service: "figma-mcp", sessions: Object.keys(transports).length });
 });
 
 app.post("/mcp", async (req, res) => {
   const sessionId = req.headers["mcp-session-id"] as string | undefined;
   try {
     if (sessionId && transports[sessionId]) {
+      sessionLastSeen[sessionId] = Date.now();
       await transports[sessionId].handleRequest(req, res, req.body);
       return;
     }
@@ -295,12 +310,16 @@ app.post("/mcp", async (req, res) => {
       sessionIdGenerator: () => randomUUID(),
       onsessioninitialized: (sid) => {
         transports[sid] = transport;
+        sessionLastSeen[sid] = Date.now();
       },
     });
 
     transport.onclose = () => {
       const sid = transport.sessionId;
-      if (sid && transports[sid]) delete transports[sid];
+      if (sid) {
+        delete transports[sid];
+        delete sessionLastSeen[sid];
+      }
     };
 
     const server = createServer();
