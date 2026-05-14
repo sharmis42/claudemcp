@@ -3,7 +3,7 @@ services:
     name: figma-mcp
     runtime: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: node --no-deprecation dist/index.js
     healthCheckPath: /health
     envVars:
       - key: FIGMA_ACCESS_TOKEN
